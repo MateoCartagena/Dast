@@ -1,52 +1,23 @@
 version: 2.1
 
-orbs:
-  python: circleci/python@2.1.1
-
 jobs:
-  install-deps:
+  test-python:
     docker:
       - image: cimg/python:3.11
     steps:
       - checkout
       - run:
-          name: Install dependencies
+          name: Instalar pytest
           command: |
             python -m pip install --upgrade pip
             pip install pytest
-      - persist_to_workspace:
-          root: .
-          paths:
-            - .
-
-  run-tests:
-    docker:
-      - image: cimg/python:3.11
-    steps:
-      - attach_workspace:
-          at: .
       - run:
-          name: Run tests
-          command: |
-            set +e
-            pytest --junitxml=test-results/junit.xml
-            TEST_RESULT=$?
-            if [ $TEST_RESULT -eq 0 ]; then
-              echo "✅ Tests passed correctamente"
-            else
-              echo "❌ Tests fallaron"
-              exit $TEST_RESULT
-            fi
+          name: Ejecutar tests
+          command: pytest --junitxml=junit.xml || (exit 1)
       - store_test_results:
-          path: test-results
+          path: junit.xml
 
 workflows:
   build-and-test:
     jobs:
-      - install-deps
-      - run-tests:
-          requires:
-            - install-deps
-          filters:
-            branches:
-              only: main
+      - test-python
