@@ -1,25 +1,55 @@
 version: 2.1
 
 jobs:
-  test-python:
+  setup:
+    docker:
+      - image: cimg/python:3.11
+    steps:
+      - checkout
+      - run:
+          name: Instalar pytest
+          command: |
+            python -m pip install --upgrade pip
+            pip install pytest
+      - persist_to_workspace:
+          root: .
+          paths:
+            - .
+
+  test:
     docker:
       - image: cimg/python:3.11
     environment:
       PYTHONPATH: .
+    parallelism: 2
     steps:
-      - checkout
+      - attach_workspace:
+          at: .
       - run:
-          name: Actualizar pip e instalar pytest
+          name: Ejecutar tests en paralelo
           command: |
-            python -m pip install --upgrade pip
-            pip install pytest
-      - run:
-          name: Ejecutar tests con pytest
-          command: pytest --junitxml=junit.xml
+            circleci tests split --split-by=timings tests | xargs pytest --junitxml=test-results/junit-${CIRCLE_NODE_INDEX}.xml
       - store_test_results:
-          path: junit.xml
+          path: test-results
+
+  notify:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - run:
+          name: Notificación simple (mostrar estado)
+          when: always
+          command: |
+            echo "Pipeline finalizó con estado: ${CIRCLE_JOB} en la rama ${CIRCLE_BRANCH}"
 
 workflows:
+  version: 2
   build-and-test:
     jobs:
-      - test-python
+      - setup
+      - test:
+          requires:
+            - setup
+      - notify:
+          requires:
+            - test
