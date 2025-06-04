@@ -19,7 +19,7 @@ jobs:
   run-tests:
     docker:
       - image: cimg/python:3.11
-    parallelism: 2  # Esto ejecuta los tests en 2 contenedores
+    parallelism: 2
     steps:
       - attach_workspace:
           at: .
@@ -34,13 +34,17 @@ jobs:
     docker:
       - image: cimg/base:stable
     steps:
-      - run: echo "✅ Tests passed correctamente"
+      - run:
+          name: Notify Success
+          command: echo "✅ Tests passed correctamente"
 
   notify-failure:
     docker:
       - image: cimg/base:stable
     steps:
-      - run: echo "❌ Tests fallaron"
+      - run:
+          name: Notify Failure
+          command: echo "❌ Tests fallaron"
 
 workflows:
   build-and-test:
@@ -49,7 +53,6 @@ workflows:
       - run-tests:
           requires:
             - install-deps
-          # Si falla este job, notify-failure correrá
       - notify-success:
           requires:
             - run-tests
@@ -62,4 +65,3 @@ workflows:
           filters:
             branches:
               only: main
-          when: on_fail
