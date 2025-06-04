@@ -4,16 +4,18 @@ jobs:
   test-python:
     docker:
       - image: cimg/python:3.11
+    environment:
+      PYTHONPATH: .
     steps:
       - checkout
       - run:
-          name: Instalar pytest
+          name: Actualizar pip e instalar pytest
           command: |
             python -m pip install --upgrade pip
             pip install pytest
       - run:
-          name: Ejecutar tests
-          command: pytest --junitxml=junit.xml || (exit 1)
+          name: Ejecutar tests con pytest
+          command: pytest --junitxml=junit.xml
       - store_test_results:
           path: junit.xml
 
