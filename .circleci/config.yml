@@ -26,9 +26,19 @@ jobs:
       - attach_workspace:
           at: .
       - run:
-          name: Ejecutar tests en paralelo
+          name: Listar archivos de test para dividir
           command: |
-            circleci tests split --split-by=timings tests | xargs pytest --junitxml=test-results/junit-${CIRCLE_NODE_INDEX}.xml
+            echo "Archivos de test detectados:"
+            find tests -name "*.py" | sort > testfiles.txt
+            cat testfiles.txt
+      - run:
+          name: Ejecutar tests divididos en paralelo
+          command: |
+            # Dividir archivos para este nodo
+            FILES=$(circleci tests glob "tests/*.py" | circleci tests split --split-by=files --index=${CIRCLE_NODE_INDEX} --total=${CIRCLE_NODE_TOTAL})
+            echo "Archivos que correrán en este nodo:"
+            echo "$FILES"
+            pytest $FILES --junitxml=test-results/junit-${CIRCLE_NODE_INDEX}.xml
       - store_test_results:
           path: test-results
 
@@ -37,7 +47,7 @@ jobs:
       - image: cimg/base:stable
     steps:
       - run:
-          name: Notificación simple (mostrar estado)
+          name: Notificación simple
           when: always
           command: |
             echo "Pipeline finalizó con estado: ${CIRCLE_JOB} en la rama ${CIRCLE_BRANCH}"
