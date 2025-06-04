@@ -24,21 +24,18 @@ jobs:
           at: .
       - run:
           name: Run tests
-          command: pytest --junitxml=test-results/junit.xml
+          command: |
+            set +e
+            pytest --junitxml=test-results/junit.xml
+            TEST_RESULT=$?
+            if [ $TEST_RESULT -eq 0 ]; then
+              echo "✅ Tests passed correctamente"
+            else
+              echo "❌ Tests fallaron"
+              exit $TEST_RESULT
+            fi
       - store_test_results:
           path: test-results
-
-  notify-success:
-    docker:
-      - image: cimg/base:stable
-    steps:
-      - run: echo "✅ Tests passed correctamente"
-
-  notify-failure:
-    docker:
-      - image: cimg/base:stable
-    steps:
-      - run: echo "❌ Tests fallaron"
 
 workflows:
   build-and-test:
@@ -47,16 +44,6 @@ workflows:
       - run-tests:
           requires:
             - install-deps
-      - notify-success:
-          requires:
-            - run-tests
           filters:
             branches:
               only: main
-      - notify-failure:
-          requires:
-            - run-tests
-          filters:
-            branches:
-              only: main
-          when: on_fail
