@@ -19,14 +19,12 @@ jobs:
   run-tests:
     docker:
       - image: cimg/python:3.11
-    parallelism: 2
     steps:
       - attach_workspace:
           at: .
       - run:
-          name: Run tests in parallel
-          command: |
-            circleci tests split tests/test_sum_unit.py | xargs pytest --junitxml=test-results/junit.xml
+          name: Run tests
+          command: pytest --junitxml=test-results/junit.xml
       - store_test_results:
           path: test-results
 
@@ -34,17 +32,13 @@ jobs:
     docker:
       - image: cimg/base:stable
     steps:
-      - run:
-          name: Notify Success
-          command: echo "✅ Tests passed correctamente"
+      - run: echo "✅ Tests passed correctamente"
 
   notify-failure:
     docker:
       - image: cimg/base:stable
     steps:
-      - run:
-          name: Notify Failure
-          command: echo "❌ Tests fallaron"
+      - run: echo "❌ Tests fallaron"
 
 workflows:
   build-and-test:
@@ -65,3 +59,4 @@ workflows:
           filters:
             branches:
               only: main
+          when: on_fail
