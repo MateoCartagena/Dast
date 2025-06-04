@@ -1,0 +1,65 @@
+version: 2.1
+
+orbs:
+  python: circleci/python@2.1.1
+
+jobs:
+  install-deps:
+    docker:
+      - image: cimg/python:3.11
+    steps:
+      - checkout
+      - python/install-packages:
+          pkg-manager: pip
+      - persist_to_workspace:
+          root: .
+          paths:
+            - .
+
+  run-tests:
+    docker:
+      - image: cimg/python:3.11
+    parallelism: 2  # Esto ejecuta los tests en 2 contenedores
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: Run tests in parallel
+          command: |
+            circleci tests split tests/test_sum_unit.py | xargs pytest --junitxml=test-results/junit.xml
+      - store_test_results:
+          path: test-results
+
+  notify-success:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - run: echo "✅ Tests passed correctamente"
+
+  notify-failure:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - run: echo "❌ Tests fallaron"
+
+workflows:
+  build-and-test:
+    jobs:
+      - install-deps
+      - run-tests:
+          requires:
+            - install-deps
+          # Si falla este job, notify-failure correrá
+      - notify-success:
+          requires:
+            - run-tests
+          filters:
+            branches:
+              only: main
+      - notify-failure:
+          requires:
+            - run-tests
+          filters:
+            branches:
+              only: main
+          when: on_fail
