@@ -9,8 +9,11 @@ jobs:
       - image: cimg/python:3.11
     steps:
       - checkout
-      - python/install-packages:
-          pkg-manager: pip
+      - run:
+          name: Install dependencies
+          command: |
+            python -m pip install --upgrade pip
+            pip install pytest
       - persist_to_workspace:
           root: .
           paths:
