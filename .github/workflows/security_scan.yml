@@ -4,62 +4,61 @@ name: Security Scan with Bandit
 on:
   push:
     branches:
-      - main # Run on pushes to the main branch
+      - main
   pull_request:
     branches:
-      - main # Run on pull requests targeting the main branch
+      - main
 
 jobs:
   bandit_scan:
-    runs-on: ubuntu-latest # Use a Linux runner (or windows-latest if preferred)
+    runs-on: ubuntu-latest
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4 # Action to clone your repository
+      uses: actions/checkout@v4
 
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.11' # Use the desired Python version, e.g., '3.11'
+        python-version: '3.x'
 
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install bandit # Install Bandit
+        # Correct your requirements.txt filename to 'requirements.txt'
+        # pip install -r requirements.txt # Uncomment if Bandit is in your requirements.txt
+        pip install bandit # Ensure Bandit is installed
+        pip install jq # Install jq for JSON parsing
 
     - name: Run Bandit Scan
       id: bandit_scan
-      # Change directory to where your code is relative to the root of the repo
-      # For your structure, it looks like 'app' is under 'sum_service' directly,
-      # but if the repo root IS 'sum_service', then 'cd .' is fine.
-      # Based on your tree, the workflow would be run from the root of 'sum_service' repo
       run: |
-        cd app # Navigate into the 'app' directory to run bandit on its contents
-        bandit -r . -f json -o ../bandit-results.json || true # Scan and output to JSON, '|| true' to not fail the step immediately
-      continue-on-error: true # Allow the workflow to continue even if Bandit finds issues (for now)
+        cd app
+        bandit -r . -f json -o ../bandit-results.json || true
+      continue-on-error: true # Allow the workflow to continue even if Bandit finds issues for reporting
 
-    - name: Check Bandit Results (Optional: Fail Build on High/Medium Issues)
+    - name: Check Bandit Results and Fail Build
       run: |
-        # Parse the JSON output from Bandit
-        # This is a simplified example; a real check might be more robust
         if [ -f bandit-results.json ]; then
-          HIGH_ISSUES=$(jq '.metrics._totals.SEVERITY.HIGH' bandit-results.json)
-          MEDIUM_ISSUES=$(jq '.metrics._totals.SEVERITY.MEDIUM' bandit-results.json)
+          HIGH_ISSUES=$(jq '._totals.SEVERITY.HIGH' bandit-results.json)
+          MEDIUM_ISSUES=$(jq '._totals.SEVERITY.MEDIUM' bandit-results.json)
 
           echo "Bandit found High issues: $HIGH_ISSUES"
           echo "Bandit found Medium issues: $MEDIUM_ISSUES"
 
           if [ "$HIGH_ISSUES" -gt 0 ] || [ "$MEDIUM_ISSUES" -gt 0 ]; then
-            echo "::error file=bandit-results.json::Bandit found security issues (High: $HIGH_ISSUES, Medium: $MEDIUM_ISSUES). Please review."
-            exit 1 # Fail the workflow if High or Medium issues are found
+            echo "::error file=bandit-results.json::Bandit found security issues (High: $HIGH_ISSUES, Medium: $MEDIUM_ISSUES). Please review and fix."
+            exit 1 # Fail the workflow
+          else
+            echo "No High or Medium Bandit issues found. Good job!"
           fi
         else
-          echo "No bandit-results.json found, skipping check."
+          echo "Bandit results file (bandit-results.json) not found. Skipping issue check."
+          exit 1 # Fail if the report wasn't generated
         fi
-      shell: bash # Use bash for the shell commands, required for jq
+      shell: bash # Explicitly use bash for the script
 
-    - name: Upload Bandit Report (Optional)
+    - name: Upload Bandit Report
       uses: actions/upload-artifact@v4
       with:
         name: bandit-report
